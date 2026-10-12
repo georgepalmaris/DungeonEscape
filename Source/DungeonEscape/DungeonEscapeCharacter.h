@@ -48,6 +48,10 @@ protected:
 	/** Mouse Look Input Action */
 	UPROPERTY(EditAnywhere, Category ="Input")
 	class UInputAction* MouseLookAction;
+
+	/** Interaction Input Action */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	class UInputAction* InteractionAction;
 	
 public:
 	ADungeonEscapeCharacter();
@@ -90,5 +94,17 @@ public:
 	/** Returns first person camera component **/
 	UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
 
+	/** Handles interaction inputs from either controls or UI interfaces */
+	UFUNCTION(BlueprintCallable, Category = "Input")
+	virtual void OnInteract();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
+	float InteractionDistance = 300.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
+	float InteractionSphereRadius = 30.0f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Interaction")
+	TArray<FString> Inventory;
 };
 

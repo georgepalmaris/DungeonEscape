@@ -83,3 +83,5 @@ Plugins/*
 .AppleDouble
 .LSOverride
 ._*
+
+/Content/

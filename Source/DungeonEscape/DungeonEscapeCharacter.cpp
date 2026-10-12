@@ -9,6 +9,8 @@
 #include "InputActionValue.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "DungeonEscape.h"
+#include "CollectableItem.h"
+#include "Lock.h"
 
 ADungeonEscapeCharacter::ADungeonEscapeCharacter()
 {
@@ -59,6 +61,9 @@ void ADungeonEscapeCharacter::SetupPlayerInputComponent(UInputComponent* PlayerI
 		// Looking/Aiming
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ADungeonEscapeCharacter::LookInput);
 		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &ADungeonEscapeCharacter::LookInput);
+
+		// Interaction
+		EnhancedInputComponent->BindAction(InteractionAction, ETriggerEvent::Started, this, &ADungeonEscapeCharacter::OnInteract);
 	}
 	else
 	{
@@ -117,4 +122,61 @@ void ADungeonEscapeCharacter::DoJumpEnd()
 {
 	// pass StopJumping to the character
 	StopJumping();
+}
+
+void ADungeonEscapeCharacter::OnInteract()
+{
+	FVector Start = FirstPersonCameraComponent->GetComponentLocation();
+	FVector End = Start + (FirstPersonCameraComponent->GetForwardVector() * InteractionDistance);
+
+	FCollisionShape Sphere = FCollisionShape::MakeSphere(InteractionSphereRadius);
+	FHitResult HitResult;
+	bool bHit = GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, ECC_GameTraceChannel2, Sphere);
+
+	if (bHit)
+	{
+		if (AActor* HitActor = HitResult.GetActor())
+		{
+			if (HitActor->ActorHasTag(FName("CollectableItem")))
+			{
+				UE_LOG(LogDungeonEscape, Log, TEXT("Interacted with Actor: %s"), *HitActor->GetName());
+
+				ACollectableItem* CollectableItem = Cast<ACollectableItem>(HitActor);
+
+				if (CollectableItem)
+				{
+					Inventory.Add(CollectableItem->ItemName);
+					CollectableItem->Destroy();
+				}
+			}
+			else if (HitActor->ActorHasTag(FName("Lock")))
+			{
+				UE_LOG(LogDungeonEscape, Log, TEXT("Interacted with Lock: %s"), *HitActor->GetName());
+ 
+				ALock* Lock = Cast<ALock>(HitActor);
+
+				if (Lock && !Lock->GetIsKeyPlaced())
+				{
+					if (Inventory.Contains(Lock->KeyItemName))
+					{
+						Lock->SetIsKeyPlaced(true);
+						Inventory.Remove(Lock->KeyItemName);
+					}
+					else
+					{
+						UE_LOG(LogDungeonEscape, Log, TEXT("Player does not have the required key item: %s"), *Lock->KeyItemName);
+					}
+				}
+				else
+				{
+					Inventory.Add(Lock->KeyItemName);
+					Lock->SetIsKeyPlaced(false);
+				}
+			}
+			else
+			{
+				UE_LOG(LogDungeonEscape, Log, TEXT("Hit Actor is not interactable: %s"), *HitActor->GetName());
+			}
+		}
+	}
 }
